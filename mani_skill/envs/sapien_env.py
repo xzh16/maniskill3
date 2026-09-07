@@ -1,3 +1,20 @@
+"""ManiSkill 所有仿真任务环境的基础实现。
+
+``BaseEnv`` 同时遵循 Gymnasium 的环境接口，并负责连接 ManiSkill、SAPIEN、
+PhysX、机器人 Agent、传感器和渲染器。具体任务（如 PushCubeEnv）通常继承它，
+只实现“场景里放什么、每局如何初始化、怎样算成功和奖励”。
+
+最重要的两条生命周期：
+
+* 创建：``__init__ -> reset(reconfigure=True) -> _reconfigure``
+  ``-> _setup_scene -> _load_agent -> _load_scene -> _setup_sensors``；
+* 交互：``step(action) -> _step_action -> 多个 scene.step``
+  ``-> get_info/evaluate -> get_obs -> get_reward``。
+
+本文件较长。第一次阅读先看上述方法以及 ``_initialize_episode``；相机纹理、
+GPU 缓冲区、状态回放和多环境并行属于进阶功能，可以先知道入口而不深究细节。
+"""
+
 import copy
 import gc
 import os
@@ -115,6 +132,17 @@ class BaseEnv(gym.Env):
         enhanced_determinism (bool): By default this is False and env resets will reset the episode RNG only when a seed / seed list is given.
             If True, the environment will reset the episode RNG upon each reset regardless of whether a seed is provided.
             Generally enhanced_determinisim is not needed and users are recommended to pass seeds into the env reset function instead.
+
+    自定义任务最常覆盖的方法：
+
+    * ``_load_scene``：创建桌子、线缆和目标等长期存在的实体；
+    * ``_initialize_episode``：每次 reset 时设置机器人/物体初始状态；
+    * ``evaluate``：计算 success、fail 以及可复用的任务指标；
+    * ``_get_obs_extra``：加入任务特有状态观测；
+    * ``compute_dense_reward``：仅在需要稠密奖励时实现。
+
+    ``reset`` 和 ``step`` 已经实现了 Gymnasium 规定的公共流程，普通任务通常
+    不应该重写它们，而是实现上面的钩子方法。
     """
 
     # fmt: off
@@ -208,9 +236,13 @@ class BaseEnv(gym.Env):
         parallel_in_single_scene: bool = False,
         enhanced_determinism: bool = False,
     ):
+        """保存配置，并通过第一次 reset 完整构建环境。"""
+
         self._enhanced_determinism = enhanced_determinism
 
+        # num_envs 是同一进程中并行仿真的环境数量；CPU 后端这里只支持 1。
         self.num_envs = num_envs
+        # reconfiguration 控制“拆掉并重建整个场景”的频率，它比普通 reset 昂贵。
         self.reconfiguration_freq = reconfiguration_freq if reconfiguration_freq is not None else 0
         self._reconfig_counter = 0
         if shader_dir is not None:
@@ -222,6 +254,7 @@ class BaseEnv(gym.Env):
         self._custom_human_render_camera_configs = human_render_camera_configs
         self._custom_viewer_camera_configs = viewer_camera_configs
         self._parallel_in_single_scene = parallel_in_single_scene
+        # robot_uids 对应 @register_agent 注册的名字，例如 "panda"。
         self.robot_uids = robot_uids
         if isinstance(robot_uids, tuple) and len(robot_uids) == 1:
             self.robot_uids = robot_uids[0]
@@ -229,13 +262,14 @@ class BaseEnv(gym.Env):
             if self.robot_uids not in self.SUPPORTED_ROBOTS:
                 logger.warning(f"{self.robot_uids} is not in the task's list of supported robots. Code may not run as intended")
 
+        # 单环境默认使用 CPU PhysX，多环境默认使用 GPU PhysX。
         if sim_backend == "auto":
             if num_envs > 1:
                 sim_backend = "physx_cuda"
             else:
                 sim_backend = "physx_cpu"
         self.backend = parse_sim_and_render_backend(sim_backend, render_backend)
-        # determine the sim and render devices
+        # 仿真设备和渲染设备可以不同；device 是 ManiSkill 张量使用的主设备。
         self.device = self.backend.device
         self._sim_device = self.backend.sim_device
         self._render_device = self.backend.render_device
@@ -257,6 +291,7 @@ class BaseEnv(gym.Env):
         assert not parallel_in_single_scene or (obs_mode not in ["sensor_data", "pointcloud", "rgb", "depth", "rgbd"]), \
             "Parallel rendering from parallel cameras is only supported when the gui/viewer is not used. parallel_in_single_scene must be False if using parallel rendering. If True only state based observations are supported."
 
+        # 将任务默认仿真参数与 gym.make 传入的覆盖项合并。
         if isinstance(sim_config, SimConfig):
             sim_config = sim_config.dict()
         merged_gpu_sim_config = self._default_sim_config.dict()
@@ -275,13 +310,14 @@ class BaseEnv(gym.Env):
 
         sapien.render.set_log_level(os.getenv("MS_RENDERER_LOG_LEVEL", "warn"))
 
-        # Set simulation and control frequency
+        # 仿真频率通常高于控制频率。例如 100 Hz / 20 Hz 表示一个 action 下执行
+        # 5 次物理 scene.step，这能让碰撞与控制更稳定。
         self._sim_freq = self.sim_config.sim_freq
         self._control_freq = self.sim_config.control_freq
         assert self._sim_freq % self._control_freq == 0, f"sim_freq({self._sim_freq}) is not divisible by control_freq({self._control_freq})."
         self._sim_steps_per_control = self._sim_freq // self._control_freq
 
-        # Observation mode
+        # 观测模式决定 get_obs 返回状态、图像、点云，还是空字典。
         if obs_mode is None:
             obs_mode = self.SUPPORTED_OBS_MODES[0]
         if obs_mode not in self.SUPPORTED_OBS_MODES:
@@ -295,33 +331,34 @@ class BaseEnv(gym.Env):
         self.obs_mode_struct = parse_obs_mode_to_struct(self._obs_mode)
         """dataclass describing what observation data is being requested by the user, detailing if state data is requested and what visual data is requested"""
 
-        # Reward mode
+        # 奖励模式只负责“选择哪一种奖励函数”，具体奖励由对应方法计算。
         if reward_mode is None:
             reward_mode = self.SUPPORTED_REWARD_MODES[0]
         if reward_mode not in self.SUPPORTED_REWARD_MODES:
             raise NotImplementedError("Unsupported reward mode: {}".format(reward_mode))
         self._reward_mode = reward_mode
 
-        # Control mode
+        # control_mode 会在加载 Agent 时传给 BaseAgent。
         self._control_mode = control_mode
         # TODO(jigu): Support dict action space
         if control_mode == "*":
             raise NotImplementedError("Multiple controllers are not supported yet.")
 
-        # Render mode
+        # render_mode=None 不主动渲染；human 打开 GUI；rgb_array 返回图像张量。
         self.render_mode = render_mode
         self._viewer = None
 
         # Lighting
         self.enable_shadow = enable_shadow
 
-        # Use a fixed (main) seed to enhance determinism
+        # 初始化随机数与计步器。每个并行环境都有自己的 seed 和 elapsed_steps。
         self._set_main_rng([2022 + i for i in range(self.num_envs)])
         self._elapsed_steps = (
             torch.zeros(self.num_envs, device=self.device, dtype=torch.int32)
         )
         self._last_obs = None
         """the last observation returned by the environment"""
+        # 第一次 reset 强制 reconfigure，真正创建 scene、agent 和任务物体。
         obs, _ = self.reset(seed=[2022 + i for i in range(self.num_envs)], options=dict(reconfigure=True))
 
         self._init_raw_obs = common.to_tensor(obs, device=torch.device("cpu"))
@@ -329,6 +366,7 @@ class BaseEnv(gym.Env):
         self._init_raw_state = common.to_tensor(self.get_state_dict(), device=torch.device("cpu"))
         """the initial raw state returned by env.get_state. Useful for reconstructing state dictionaries from flattened state vectors"""
 
+        # 环境的动作空间直接来自 Agent 当前控制器。
         if self.agent is not None:
             self.action_space = self.agent.action_space
             """the batched action space of the environment, which is also the action space of the agent"""
@@ -362,6 +400,7 @@ class BaseEnv(gym.Env):
                 def observation(self, obs):
                     # your code for transforming the observation
         """
+        # cached_property 只计算一次；观测结构改变后必须删除缓存并重新推导。
         self._init_raw_obs = obs
         del self.single_observation_space
         del self.observation_space
@@ -385,7 +424,10 @@ class BaseEnv(gym.Env):
 
     @property
     def _default_sim_config(self):
+        """任务可覆盖此属性，提供适合自身接触/求解精度的默认仿真参数。"""
+
         return SimConfig()
+
     def _load_agent(self, options: dict, initial_agent_poses: Optional[Union[sapien.Pose, Pose]] = None, build_separate: bool = False):
         """
         loads the agent/controllable articulations into the environment. The default function provides a convenient way to setup the agent/robot by a robot_uid
@@ -400,6 +442,7 @@ class BaseEnv(gym.Env):
                 together to be accessible under one view/object. This is useful for randomizing physical and visual properties of the agent/robot which is only permitted for
                 articulations built separately in each environment.
         """
+        # 一个环境可放一个或多个 Agent，因此内部统一用列表收集。
         agents = []
         robot_uids = self.robot_uids
         if not isinstance(initial_agent_poses, list):
@@ -407,10 +450,12 @@ class BaseEnv(gym.Env):
         else:
             initial_agent_poses_list = initial_agent_poses
         if robot_uids == "none" or robot_uids == ("none", ):
+            # 某些纯物理环境不需要可控机器人。
             self.agent = None  # pyright: ignore[reportAttributeAccessIssue]
             return
         if robot_uids is not None:
             if not isinstance(robot_uids, tuple):
+                # 单个 uid 也转为序列，使后面的单/多机器人加载走同一套代码。
                 robot_uids = [robot_uids]
             for i, robot_uid in enumerate(robot_uids):
                 if isinstance(robot_uid, type(BaseAgent)):
@@ -422,6 +467,7 @@ class BaseEnv(gym.Env):
                             f"Agent {robot_uid} not found in the dict of registered agents. If the id is not a typo then make sure to apply the @register_agent() decorator."
                         )
                     agent_cls = REGISTERED_AGENTS[robot_uid].agent_cls
+                # 这里会进入 BaseAgent.__init__，加载 URDF 并创建控制器。
                 agent: BaseAgent = agent_cls(
                     self.scene,
                     self._control_freq,
@@ -434,6 +480,7 @@ class BaseEnv(gym.Env):
         if len(agents) == 1:
             self.agent = agents[0]
         else:
+            # MultiAgent 把多个 Agent 包装成统一动作和状态接口。
             self.agent = MultiAgent(agents)
 
     @property
@@ -442,8 +489,7 @@ class BaseEnv(gym.Env):
     ) -> Union[
         BaseSensorConfig, Sequence[BaseSensorConfig], dict[str, BaseSensorConfig]
     ]:
-        """Add default (non-agent) sensors to the environment by returning sensor configurations. These can be overriden by the user at
-        env creation time"""
+        """返回环境自带的传感器配置，例如固定在场景中的相机。"""
         return []
     @property
     def _default_human_render_camera_configs(
@@ -451,14 +497,14 @@ class BaseEnv(gym.Env):
     ) -> Union[
         CameraConfig, Sequence[CameraConfig], dict[str, CameraConfig]
     ]:
-        """Add default cameras for rendering when using render_mode='rgb_array'. These can be overriden by the user at env creation time """
+        """返回仅供人类观察/录像使用的相机，不属于机器人的观测。"""
         return []
 
     @property
     def _default_viewer_camera_configs(
         self,
     ) -> CameraConfig:
-        """Default configuration for the viewer camera, controlling shader, fov, etc. By default if there is a human render camera called "render_camera" then the viewer will use that camera's pose."""
+        """SAPIEN 交互式 GUI 的默认相机配置。"""
         return CameraConfig(uid="viewer", pose=sapien.Pose([0, 0, 1]), width=1920, height=1080, shader_pack="default", near=0.0, far=1000, fov=np.pi / 2)
 
     @property
@@ -514,22 +560,27 @@ class BaseEnv(gym.Env):
                 If this is None (the default), this function will call `self.get_info()` itself
             unflattened (bool): Whether to return the observation without flattening even if the observation mode (`self.obs_mode`) asserts to return a flattened observation.
         """
+        # info 常包含 evaluate 已算好的 success/grasp 等结果，复用它可避免重复计算。
         if info is None:
             info = self.get_info()
         if self._obs_mode == "none":
             # Some cases do not need observations, e.g., MPC
             return dict()
         elif self._obs_mode == "state":
+            # 先生成有结构的字典，函数末尾再展平成一个向量。
             obs = self._get_obs_state_dict(info)
         elif self._obs_mode == "state_dict":
+            # 保留 agent/extra 等字典结构，调试任务时最直观。
             obs = self._get_obs_state_dict(info)
         elif self._obs_mode == "pointcloud":
+            # 先读取相机纹理，再结合相机参数转换成三维点云。
             obs = self._get_obs_with_sensor_data(info)
             obs = sensor_data_to_pointcloud(obs, self._sensors)
         elif self._obs_mode == "sensor_data":
             # return raw texture data dependent on choice of shader
             obs = self._get_obs_with_sensor_data(info, apply_texture_transforms=False)
         else:
+            # rgb、depth、segmentation 等视觉组合走这个分支。
             obs = self._get_obs_with_sensor_data(info)
         return obs if unflattened else self._flatten_raw_obs(obs)
 
@@ -545,19 +596,18 @@ class BaseEnv(gym.Env):
         return obs
 
     def _get_obs_state_dict(self, info: dict):
-        """Get (ground-truth) state-based observations."""
+        """组合本体感知 ``agent`` 与任务特有观测 ``extra``。"""
         return dict(
             agent=self._get_obs_agent(),
             extra=self._get_obs_extra(info),
         )
 
     def _get_obs_agent(self):
-        """Get observations about the agent's state. By default it is proprioceptive observations which include qpos and qvel.
-        Controller state is also included although most default controllers do not have any state."""
+        """获取 Agent 本体感知，默认包括 qpos、qvel 和控制器内部状态。"""
         return self.agent.get_proprioception()
 
     def _get_obs_extra(self, info: dict):
-        """Get task-relevant extra observations. Usually defined on a task by task basis"""
+        """任务子类在这里加入物体位姿、目标位置等额外状态；默认是空字典。"""
         return dict()
 
     def capture_sensor_data(self):
@@ -599,6 +649,7 @@ class BaseEnv(gym.Env):
                     }
                 }
         """
+        # 有些辅助物体只供人类看，不应泄漏给视觉策略，拍摄观测前临时隐藏。
         for obj in self._hidden_objects:
             obj.hide_visual()
         self.scene.update_render(update_sensors=True, update_human_render_cameras=False)
@@ -656,6 +707,7 @@ class BaseEnv(gym.Env):
             action (torch.Tensor): The most recent action.
             info (dict): The info dictionary.
         """
+        # 这里只做分派；任务逻辑写在 compute_*_reward 中。
         if self._reward_mode == "sparse":
             reward = self.compute_sparse_reward(obs=obs, action=action, info=info)
         elif self._reward_mode == "dense":
@@ -681,6 +733,7 @@ class BaseEnv(gym.Env):
             action (torch.Tensor): The most recent action.
             info (dict): The info dictionary.
         """
+        # 基类约定：成功 +1，失败 -1，其他状态 0。
         if "success" in info:
             if "fail" in info:
                 if isinstance(info["success"], torch.Tensor):
@@ -705,6 +758,7 @@ class BaseEnv(gym.Env):
             action (torch.Tensor): The most recent action.
             info (dict): The info dictionary.
         """
+        # 基类不知道“离任务目标还有多远”，必须由具体任务定义。
         raise NotImplementedError()
 
     def compute_normalized_dense_reward(
@@ -718,6 +772,7 @@ class BaseEnv(gym.Env):
             action (torch.Tensor): The most recent action.
             info (dict): The info dictionary.
         """
+        # 通常是把 dense reward 缩放到固定范围，具体上限由任务决定。
         raise NotImplementedError()
 
     # -------------------------------------------------------------------------- #
@@ -735,17 +790,22 @@ class BaseEnv(gym.Env):
         shape changes each time and the faucet model changes each time respectively.
         """
 
+        # reconfigure 与普通 reset 的关键区别：这里会销毁并重建整个物理场景。
         self._clear()
-        # load everything into the scene first before initializing anything
+        # 1. 创建底层 SAPIEN/PhysX 场景。
         self._setup_scene()
 
+        # 2. 根据 robot_uids 加载机器人 Agent。
         self._load_agent(options)
 
+        # 3. 调用任务子类，加载桌子、线缆、目标等实体。
         self._load_scene(options)
+        # 4. 添加灯光，然后完成 PhysX/GPU 场景设置。
         if self.scene.can_render(): self._load_lighting(options)
 
         self.scene._setup(enable_gpu=self.gpu_sim_enabled)
-        # for GPU sim, we have to setup sensors after we call setup gpu in order to enable loading mounted sensors as they depend on GPU buffer data
+        # 5. 创建环境相机和机器人挂载相机。GPU 挂载相机依赖已初始化的缓冲区，
+        # 因此传感器必须放在 scene._setup 之后创建。
         if self.scene.can_render(): self._setup_sensors(options)
         if self.render_mode == "human" and self._viewer is None:
             self._viewer = sapien_utils.create_viewer(self._viewer_camera_config)
@@ -760,31 +820,36 @@ class BaseEnv(gym.Env):
         self.segmentation_id_map
 
     def _after_reconfigure(self, options):
-        """Add code here that should run immediately after self._reconfigure is called. The torch RNG context is still active so RNG is still
-        seeded here by self._episode_seed. This is useful if you need to run something that only happens after reconfiguration but need the
-        GPU initialized so that you can check e.g. collisons, poses etc."""
+        """场景完全重建后的可选任务钩子；默认不做任何事。
+
+        此时 GPU 已初始化，且随机数上下文仍受 episode seed 控制，适合执行需要
+        查询碰撞/位姿、但只应在重建后执行一次的逻辑。
+        """
 
     def _load_scene(self, options: dict):
-        """Loads all objects like actors and articulations into the scene. Called by `self._reconfigure`. Given options argument
-        is the same options dictionary passed to the self.reset function"""
+        """加载任务场景实体的核心子类钩子；基类默认不加载任何物体。
+
+        线缆任务会在这里创建地面/桌子、线缆、固定装置和目标标记。这里负责
+        “创建实体”，每局的位置随机化通常放在 ``_initialize_episode``。
+        """
 
     # TODO (stao): refactor this into sensor API
     def _setup_sensors(self, options: dict):
-        """Setup sensor configurations and the sensor objects in the scene. Called by `self._reconfigure`"""
+        """汇总环境与 Agent 的传感器配置，并创建实际传感器对象。"""
 
-        # First create all the configurations
+        # 1. 加入任务环境定义的固定传感器。
         self._sensor_configs = dict()
 
         # Add task/external sensors
         self._sensor_configs.update(parse_sensor_configs(self._default_sensor_configs))
 
-        # Add agent sensors
+        # 2. 加入 Agent 自带的传感器，例如腕部相机。
         self._agent_sensor_configs = dict()
         if self.agent is not None:
             self._agent_sensor_configs = parse_sensor_configs(self.agent._sensor_configs)
             self._sensor_configs.update(self._agent_sensor_configs)
 
-        # Add human render camera configs
+        # 3. 人类观察相机和 Viewer 相机不进入策略观测。
         self._human_render_camera_configs = parse_sensor_configs(
             self._default_human_render_camera_configs
         )
@@ -793,7 +858,7 @@ class BaseEnv(gym.Env):
             self._default_viewer_camera_configs
         )
 
-        # Override camera configurations with user supplied configurations
+        # 4. gym.make 传入的配置拥有更高优先级，可覆盖任务默认值。
         if self._custom_sensor_configs is not None:
             update_sensor_configs_from_dict(
                 self._sensor_configs, self._custom_sensor_configs
@@ -810,7 +875,7 @@ class BaseEnv(gym.Env):
             )
         self._viewer_camera_config = _viewer_camera_config_dict["viewer"]
 
-        # Now we instantiate the actual sensor objects
+        # 5. 把纯配置对象实例化为真正的 Camera/Sensor。
         self._sensors = dict()
 
         for uid, sensor_config in self._sensor_configs.items():
@@ -847,7 +912,7 @@ class BaseEnv(gym.Env):
         self.scene.human_render_cameras = self._human_render_cameras
 
     def _load_lighting(self, options: dict):
-        """Loads lighting into the scene. Called by `self._reconfigure`. If not overriden will set some simple default lighting"""
+        """设置默认环境光和方向光；任务可覆盖它获得不同视觉效果。"""
 
         shadow = self.enable_shadow
         self.scene.set_ambient_light([0.3, 0.3, 0.3])
@@ -895,22 +960,27 @@ class BaseEnv(gym.Env):
         the episode RNG deterministically.
 
         """
+        # Gymnasium reset 最终必须返回 (observation, info)。
         if options is None:
             options = dict()
+        # reconfigure=True 表示连实体都重建；否则只重置已有实体的状态。
         reconfigure = options.get("reconfigure", False)
         reconfigure = reconfigure or (
             self._reconfig_counter == 0 and self.reconfiguration_freq != 0
         )
         if "env_idx" in options:
+            # GPU 并行仿真可只重置部分环境；重建场景时不允许这样做。
             env_idx = options["env_idx"]
             if len(env_idx) != self.num_envs and reconfigure:
                 raise RuntimeError("Cannot do a partial reset and reconfigure the environment. You must do one or the other.")
         else:
             env_idx = torch.arange(0, self.num_envs, device=self.device)
 
+        # main RNG 管理 episode seed；任务随机化主要使用 episode RNG。
         self._set_main_rng(seed)
 
         if reconfigure:
+            # 重建时先设置 seed，保证随机选择的资产也可复现。
             self._set_episode_rng(seed if seed is not None else self._batched_main_rng.randint(2**31), env_idx)
             with torch.random.fork_rng():
                 torch.manual_seed(seed=self._episode_seed[0])
@@ -928,8 +998,10 @@ class BaseEnv(gym.Env):
             self.num_envs, dtype=torch.bool, device=self.device
         )
         self.scene._reset_mask[env_idx] = True
+        # 新一局从第 0 步开始。
         self._elapsed_steps[env_idx] = 0
 
+        # 先清掉所有刚体/关节残留速度，再重置 Agent 的速度与力。
         self._clear_sim_state()
         if self.reconfiguration_freq != 0:
             self._reconfig_counter -= 1
@@ -937,7 +1009,7 @@ class BaseEnv(gym.Env):
         if self.agent is not None:
             self.agent.reset()
 
-        # we either reset to given env states or use the environment's defined _initialize_episode function to generate the initial state
+        # 两种初始化路径：恢复外部给定状态，或者让任务自己生成一局初始状态。
         reset_to_env_states_obs = None
         if "reset_to_env_states" in options:
             env_states = options["reset_to_env_states"]["env_states"]
@@ -953,7 +1025,7 @@ class BaseEnv(gym.Env):
                     self._initialize_episode(env_idx, options)
             else:
                 self._initialize_episode(env_idx, options)
-        # reset the reset mask back to all ones so any internal code in maniskill can continue to manipulate all scenes at once as usual
+        # 初始化结束后重新允许内部代码批量操作全部子环境。
         self.scene._reset_mask = torch.ones(
             self.num_envs, dtype=torch.bool, device=self.device
         )
@@ -963,7 +1035,8 @@ class BaseEnv(gym.Env):
             self.scene.px.gpu_update_articulation_kinematics()  # pyright: ignore[reportAttributeAccessIssue]
             self.scene._gpu_fetch_all()
 
-        # we reset controllers here because some controllers depend on the agent/articulation qpos/poses
+        # 必须先完成机器人 qpos/pose 初始化，再 reset 控制器；这样控制器初始目标
+        # 才与机器人真实姿态一致，不会在第一步突然拉回旧目标。
         if self.agent is not None:
             if isinstance(self.agent.controller, dict):
                 for controller in self.agent.controller.values():
@@ -971,6 +1044,7 @@ class BaseEnv(gym.Env):
             else:
                 self.agent.controller.reset()
 
+        # 根据新状态生成 Gymnasium 要求的 observation 和 info。
         info = self.get_info()
         if reset_to_env_states_obs is None:
             obs = self.get_obs(info)
@@ -1024,12 +1098,14 @@ class BaseEnv(gym.Env):
             self._episode_rng = self._batched_episode_rng[0]
 
     def _initialize_episode(self, env_idx: torch.Tensor, options: dict):
-        """Initialize the episode, e.g., poses of actors and articulations, as well as task relevant data like randomizing
-        goal positions
+        """每次 reset 时初始化一局；具体任务应覆盖本方法。
+
+        常见工作包括设置机器人初始 qpos、随机化线缆/物体位姿以及生成目标位置。
+        ``env_idx`` 指出本次需要重置哪些并行环境。
         """
 
     def _clear_sim_state(self):
-        """Clear simulation state (velocities)"""
+        """把动态刚体和 articulation 的速度清零，避免继承上一局的运动。"""
         for actor in self.scene.actors.values():
             if actor.px_body_type == "dynamic":
                 actor.set_linear_velocity(torch.zeros(3, device=self.device))
@@ -1053,12 +1129,17 @@ class BaseEnv(gym.Env):
 
         If ``action`` is None, the environment will proceed forward in time without sending any actions/control signals to the agent
         """
+        # 1. 规范化动作、交给控制器，并推进若干物理小步。
         action = self._step_action(action)
+        # 2. 控制步计数加一，然后评价当前任务状态。
         self._elapsed_steps += 1
         info = self.get_info()
+        # 3. 先保留结构化观测供奖励复用，再按 obs_mode 展平。
         obs = self.get_obs(info, unflattened=True)
         reward = self.get_reward(obs=obs, action=action, info=info)
         obs = self._flatten_raw_obs(obs)
+        # 4. success 或 fail 会让任务自然终止。时间上限通常由 Gym wrapper
+        # 产生 truncated，因此 BaseEnv 本身返回全 False 的 truncated。
         if "success" in info:
             if "fail" in info:
                 terminated = torch.logical_or(info["success"], info["fail"])
@@ -1081,18 +1162,23 @@ class BaseEnv(gym.Env):
     def _step_action(
         self, action: Union[None, Array, dict[str, Union[np.ndarray, torch.Tensor]]]
     ) -> Union[None, torch.Tensor, dict[str, torch.Tensor]]:
+        """处理动作格式、设置控制目标，并执行一个完整控制周期。"""
+
         set_action = False
         action_is_unbatched = False
         action_tensor: Union[torch.Tensor, dict[str, torch.Tensor]] = None  # pyright: ignore[reportAssignmentType]
         if action is None:  # simulation without action
+            # 不更新控制目标，但物理世界仍然继续前进。
             pass
         elif isinstance(action, np.ndarray) or isinstance(action, torch.Tensor):
+            # 常见单机器人动作路径：转换到环境使用的 torch device。
             action_tensor = common.to_tensor(action, device=self.device)
             if action_tensor.shape == self._orig_single_action_space.shape:
                 action_is_unbatched = True
             set_action = True
         elif isinstance(action, dict):
             if "control_mode" in action:
+                # 高级用法：在动作字典中动态切换控制模式。
                 if action["control_mode"] != self.agent.control_mode:
                     self.agent.set_control_mode(action["control_mode"])  # pyright: ignore[reportArgumentType]
                     self.agent.controller.reset()
@@ -1103,7 +1189,7 @@ class BaseEnv(gym.Env):
                 assert isinstance(
                     self.agent, MultiAgent
                 ), "Received a dictionary for an action but there are not multiple robots in the environment"
-                # assume this is a multi-agent action
+                # 多机器人动作形如 {agent_name: action_tensor}。
                 action_tensor = common.to_tensor(action, device=self.device)
                 for k, a in action_tensor.items():
                     if a.shape == self._orig_single_action_space[k].shape:  # pyright: ignore[reportIndexIssue]
@@ -1114,6 +1200,7 @@ class BaseEnv(gym.Env):
             raise TypeError(type(action))
 
         if set_action:
+            # 单环境允许用户传无 batch 维动作，这里自动添加 num_envs 维度。
             if self.num_envs == 1 and action_is_unbatched:
                 action_tensor = common.batch(action_tensor)  # pyright: ignore[reportArgumentType, reportAssignmentType]
             self.agent.set_action(action_tensor)
@@ -1128,9 +1215,11 @@ class BaseEnv(gym.Env):
                         self.scene.px.gpu_apply_articulation_target_position()  # pyright: ignore[reportAttributeAccessIssue]
                     if self.agent.controller.sets_target_qvel:
                         self.scene.px.gpu_apply_articulation_target_velocity()  # pyright: ignore[reportAttributeAccessIssue]
+        # 一个控制周期只接收一次 action，但要运行 _sim_steps_per_control 个物理步。
         self._before_control_step()
         for _ in range(self._sim_steps_per_control):
             if self.agent is not None:
+                # 控制器可在每个物理小步前更新驱动力/目标。
                 self.agent.before_simulation_step()
             self._before_simulation_step()
             self.scene.step()
@@ -1148,7 +1237,10 @@ class BaseEnv(gym.Env):
         This function may also return additional data that has been computed (e.g. is the robot grasping some object) that may be
         reused when generating observations and rewards.
 
-        By default if not overriden this function returns an empty dictionary
+        By default if not overriden this function returns an empty dictionary.
+
+        例如线缆任务可返回 ``success=线缆是否到达目标``、``is_grasped``、
+        ``tcp_to_cable_dist``。这些值可同时被终止条件、观测和奖励复用。
         """
         return dict()
 
@@ -1156,6 +1248,7 @@ class BaseEnv(gym.Env):
         """
         Get info about the current environment state, include elapsed steps and evaluation information
         """
+        # elapsed_steps 是公共信息；evaluate 返回任务特有指标。
         info = dict(
             elapsed_steps=self.elapsed_steps
             if not self.gpu_sim_enabled
@@ -1165,21 +1258,25 @@ class BaseEnv(gym.Env):
         return info
 
     def _before_control_step(self):
-        """Code that runs before each action has been taken via env.step(action).
-        On GPU simulation this is called before observations are fetched from the GPU buffers."""
+        """每个控制周期开始前的任务钩子；一次 env.step 只调用一次。"""
+
     def _after_control_step(self):
-        """Code that runs after each action has been taken.
-        On GPU simulation this is called right before observations are fetched from the GPU buffers."""
+        """每个控制周期结束后的任务钩子；一次 env.step 只调用一次。"""
 
     def _before_simulation_step(self):
-        """Code to run right before each physx_system.step is called"""
+        """每次 PhysX 物理小步前的任务钩子，一次 env.step 可能调用多次。"""
+
     def _after_simulation_step(self):
-        """Code to run right after each physx_system.step is called"""
+        """每次 PhysX 物理小步后的任务钩子，一次 env.step 可能调用多次。"""
 
     # -------------------------------------------------------------------------- #
     # Simulation and other gym interfaces
     # -------------------------------------------------------------------------- #
     def _set_scene_config(self):
+        """把 ManiSkill 的 SimConfig 写入 PhysX 全局场景配置。"""
+
+        # contact/rest offset、solver iterations、gravity 等参数会直接影响
+        # 碰撞稳定性；线缆这种细小且接触频繁的对象尤其需要后续调参验证。
         physx.set_shape_config(contact_offset=self.sim_config.scene_config.contact_offset, rest_offset=self.sim_config.scene_config.rest_offset)
         physx.set_body_config(solver_position_iterations=self.sim_config.scene_config.solver_position_iterations, solver_velocity_iterations=self.sim_config.scene_config.solver_velocity_iterations, sleep_threshold=self.sim_config.scene_config.sleep_threshold)
         gravity = self.sim_config.scene_config.gravity
@@ -1189,10 +1286,11 @@ class BaseEnv(gym.Env):
         physx.set_default_material(**self.sim_config.default_materials_config.dict())
 
     def _setup_scene(self):
-        """Setup the simulation scene instance.
-        The function should be called in reset(). Called by `self._reconfigure`"""
+        """根据 CPU/GPU 后端创建 SAPIEN 子场景和统一的 ManiSkillScene。"""
+
         self._set_scene_config()
         if self._sim_device.is_cuda():
+            # GPU 模式可在一个进程中创建多个子场景，并共享 PhysX GPU system。
             physx_system = physx.PhysxGpuSystem(device=self._sim_device)
             # Create the scenes in a square grid
             sub_scenes = []
@@ -1218,6 +1316,7 @@ class BaseEnv(gym.Env):
                 )
                 sub_scenes.append(scene)
         else:
+            # CPU 模式只创建一个子场景。
             physx_system = physx.PhysxCpuSystem()
             systems = [physx_system]
             if render_utils.can_render(self._render_device):
@@ -1225,7 +1324,8 @@ class BaseEnv(gym.Env):
             sub_scenes = [
                 sapien.Scene(systems)
             ]
-        # create a "global" scene object that users can work with that is linked with all other scenes created
+        # ManiSkillScene 对一个或多个 SAPIEN scene 做批量封装；任务代码通常只和
+        # self.scene 交互，不需要自行区分 CPU/GPU 子场景。
         self.scene = ManiSkillScene(
             sub_scenes,
             sim_config=self.sim_config,
@@ -1233,6 +1333,7 @@ class BaseEnv(gym.Env):
             parallel_in_single_scene=self._parallel_in_single_scene,
             backend=self.backend
         )
+        # PhysX 每个小步前进 1 / sim_freq 秒。
         self.scene.px.timestep = 1.0 / self._sim_freq
         if not self.scene.can_render():
             if self.render_mode is not None:
@@ -1243,6 +1344,7 @@ class BaseEnv(gym.Env):
         The function can be called in reset() before a new scene is created.
         Called by `self._reconfigure` and when the environment is closed/deleted
         """
+        # 断开 Viewer、Agent、Sensor 和 Scene 引用，使物理/GPU 资源可以释放。
         self._close_viewer()
         self.agent = None  # pyright: ignore[reportAttributeAccessIssue]
         self._sensors = dict()
@@ -1252,6 +1354,8 @@ class BaseEnv(gym.Env):
         gc.collect() # force gc to collect which releases most GPU memory
 
     def close(self):
+        """释放 Viewer、场景及相关资源；使用完环境后应调用。"""
+
         self._clear()
 
     def _close_viewer(self):
@@ -1263,7 +1367,9 @@ class BaseEnv(gym.Env):
     @cached_property
     def segmentation_id_map(self):
         """
-        Returns a dictionary mapping every ID to the appropriate Actor or Link object
+        返回 ``{分割图中的整数 ID: Actor 或机器人 Link}``。
+
+        语义/实例分割图只保存数字 ID，这张表用于把像素重新对应到物理实体。
         """
         res = dict()
         for actor in self.scene.actors.values():
@@ -1279,8 +1385,9 @@ class BaseEnv(gym.Env):
         self.scene.remove_from_state_dict_registry(object)
 
     def get_state_dict(self):
-        """
-        Get environment state dictionary. Override to include task information (e.g., goal)
+        """以结构化字典导出场景和控制器状态。
+
+        任务若有不属于物理实体的状态（例如目标点），应覆盖本方法并一并保存。
         """
         sim_state = self.scene.get_sim_state()
         controller_state = self.agent.get_controller_state()
@@ -1297,6 +1404,7 @@ class BaseEnv(gym.Env):
 
         Users should not override this function
         """
+        # 展平便于某些算法使用，但会丢失 key 带来的可读性。
         return common.flatten_state_dict(self.get_state_dict(), use_torch=True)
 
     def set_state_dict(self, state: dict, env_idx: Optional[torch.Tensor] = None):
@@ -1307,6 +1415,7 @@ class BaseEnv(gym.Env):
         the order of data in the vector is the same exact order that would be returned by flattening the state dictionary you get from
         `env.get_state_dict()` or the result of `env.get_state()`
         """
+        # 结构化状态更不容易因为字段顺序变化而出错，通常优先使用本接口。
         self.scene.set_sim_state(state, env_idx)
         if self.gpu_sim_enabled:
             self.scene._gpu_apply_all()
@@ -1319,9 +1428,11 @@ class BaseEnv(gym.Env):
 
         Users should not override this function
         """
+        # 按初始化时记录的实体顺序，把扁平向量切回 actors/articulations 字典。
         state_dict = dict()
         state_dict["actors"] = dict()
         state_dict["articulations"] = dict()
+        # 每个普通刚体 13 维：位置 3 + 四元数 4 + 线速度 3 + 角速度 3。
         KINEMATIC_DIM = 13  # [pos, quat, lin_vel, ang_vel]
         start = 0
         for actor_id in self._init_raw_state["actors"].keys():
@@ -1348,6 +1459,7 @@ class BaseEnv(gym.Env):
 
         Called by `self._reconfigure`
         """
+        # Viewer 只显示第一个子场景；它是调试界面，不等同于传感器相机。
         assert self._viewer is not None
         self._viewer.set_scene(self.scene.sub_scenes[0])
         control_window = (
@@ -1363,7 +1475,7 @@ class BaseEnv(gym.Env):
             )
 
     def render_human(self):
-        """render the environment by opening a GUI viewer. This also returns the viewer object. Any objects registered in the _hidden_objects list will be shown"""
+        """打开/刷新 SAPIEN GUI，并返回 Viewer 对象。"""
         for obj in self._hidden_objects:
             obj.show_visual()
         if self._viewer is None:
@@ -1380,6 +1492,7 @@ class BaseEnv(gym.Env):
         """Returns an RGB array / image of size (num_envs, H, W, 3) of the current state of the environment.
         This is captured by any of the registered human render cameras. If a camera_name is given, only data from that camera is returned.
         Otherwise all camera data is captured and returned as a single batched image. Any objects registered in the _hidden_objects list will be shown"""
+        # 使用 human render camera 生成供录像/观察的 RGB 图，而非策略传感器数据。
         for obj in self._hidden_objects:
             obj.show_visual()
         self.scene.update_render(update_sensors=False, update_human_render_cameras=True)
@@ -1400,6 +1513,7 @@ class BaseEnv(gym.Env):
         Renders all sensors that the agent can use and see and displays them in a human readable image format.
         Any objects registered in the _hidden_objects list will not be shown
         """
+        # 把机器人真正可观测的各传感器图像拼成一张便于人看的图。
         images = []
         sensor_images = self.get_sensor_images()
         for image in sensor_images.values():
@@ -1433,6 +1547,7 @@ class BaseEnv(gym.Env):
 
         If ``self.render_mode`` is "all", this is then a combination of "rgb_array" and "sensors"
         """
+        # 统一入口根据 gym.make 时的 render_mode 分派到具体渲染方法。
         if self.render_mode is None:
             raise RuntimeError("render_mode is not set.")
         if self.render_mode == "human":
@@ -1480,7 +1595,7 @@ class BaseEnv(gym.Env):
 
     # Printing metrics/info
     def print_sim_details(self):
-        """Debug tool to call to simply print a bunch of details about the running environment, including the task ID, number of environments, sim backend, etc."""
+        """打印任务、后端、频率、传感器和空间等信息，便于检查配置。"""
         sensor_settings_str = []
         for _, cam in self._sensors.items():
             if isinstance(cam, Camera):

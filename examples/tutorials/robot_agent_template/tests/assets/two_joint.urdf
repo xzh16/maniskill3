@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!-- 仅用于模板验收的两关节模型：一个旋转关节、一个平移关节，无外部 mesh。 -->
+<robot name="template_two_joint">
+  <link name="base">
+    <inertial>
+      <mass value="1"/>
+      <inertia ixx="0.01" iyy="0.01" izz="0.01" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual><geometry><box size="0.1 0.1 0.1"/></geometry></visual>
+  </link>
+  <link name="arm">
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual><geometry><box size="0.05 0.05 0.1"/></geometry></visual>
+  </link>
+  <link name="tool">
+    <inertial>
+      <mass value="0.1"/>
+      <inertia ixx="0.001" iyy="0.001" izz="0.001" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual><geometry><box size="0.04 0.04 0.04"/></geometry></visual>
+  </link>
+  <link name="tcp"/>
+  <!-- 有意让 XML 顺序不同于运动链顺序。 -->
+  <joint name="slide" type="prismatic">
+    <parent link="arm"/><child link="tool"/>
+    <origin xyz="0 0 0.12"/><axis xyz="1 0 0"/>
+    <limit lower="0" upper="0.2" effort="20" velocity="0.2"/>
+  </joint>
+  <joint name="hinge" type="revolute">
+    <parent link="base"/><child link="arm"/>
+    <origin xyz="0 0 0.15"/><axis xyz="0 0 1"/>
+    <limit lower="-1" upper="1" effort="20" velocity="1"/>
+  </joint>
+  <joint name="tcp_fixed" type="fixed">
+    <parent link="tool"/><child link="tcp"/><origin xyz="0.04 0 0"/>
+  </joint>
+</robot>
