@@ -18,11 +18,6 @@
 
 以下命令在仓库根目录执行，使用已经安装 ManiSkill 的 conda 环境：
 
-```bash
-conda activate maniskill3
-cd /home/xzh/ManiSkill/ManiSkill
-```
-
 先运行无窗口检查：
 
 ```bash

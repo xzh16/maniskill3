@@ -23,8 +23,6 @@
 在仓库根目录执行：
 
 ```bash
-conda activate maniskill3
-cd /home/xzh/ManiSkill/ManiSkill
 python -m examples.tutorials.robot_agent_template.check --example --motion
 ```
 
