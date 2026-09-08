@@ -17,7 +17,7 @@ from mani_skill.agents.registration import register_agent
 
 
 # Python 导入本模块时执行装饰器，建立 "custom_panda" -> CustomPanda 的映射。
-# 这里只继承 BaseAgent，机器人配置由我们自己填写。
+# 这里只继承 BaseAgent，机器人配置由本示例显式填写。
 @register_agent()
 class CustomPanda(BaseAgent):
     uid = "custom_panda"

@@ -1,0 +1,1409 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="FR3-dual-arm_description_0820">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.00526302922710908 -0.00222021526224785 -0.182754512152733"
+        rpy="0 0 0" />
+      <mass
+        value="88.44477003211" />
+      <inertia
+        ixx="28.4958742357906"
+        ixy="4.33649487411862E-15"
+        ixz="-2.16690182626943E-15"
+        iyy="9.60716360367091"
+        iyz="-2.29974372957519E-15"
+        izz="28.1329082282666" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="Left_Base">
+    <inertial>
+      <origin
+        xyz="-0.02572150748049 -0.000140726398872359 0.058323829930625"
+        rpy="0 0 0" />
+      <mass
+        value="2.53458536659595" />
+      <inertia
+        ixx="0.00669301732459353"
+        ixy="-1.22000806867493E-05"
+        ixz="-0.00112343988693221"
+        iyy="0.0094825459949898"
+        iyz="-3.09364675580277E-06"
+        izz="0.00886795023888272" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Left_Base.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Left_Base.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Left_Base_Joint"
+    type="fixed">
+    <origin
+      xyz="-0.199999999999999 -0.405 0.0199999999999997"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Left_Base" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Llink1">
+    <inertial>
+      <origin
+        xyz="-9.35200840483652E-07 -0.0341173390375901 0.265780620980791"
+        rpy="0 0 0" />
+      <mass
+        value="2.41043252332017" />
+      <inertia
+        ixx="0.0156481239457329"
+        ixy="2.63939401144597E-08"
+        ixz="-1.01730416693225E-07"
+        iyy="0.0136175207499885"
+        iyz="0.00407833803718911"
+        izz="0.00564870947539528" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink1joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="Left_Base" />
+    <child
+      link="Llink1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-1"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Llink2">
+    <inertial>
+      <origin
+        xyz="-9.6410482260112E-07 0.0341173135070448 0.067220148384825"
+        rpy="0 0 0" />
+      <mass
+        value="2.41043114965556" />
+      <inertia
+        ixx="0.0156482096638639"
+        ixy="-2.31242554719891E-08"
+        ixz="2.48896575754663E-09"
+        iyy="0.0136175968784074"
+        iyz="0.00407839831350163"
+        izz="0.00564871169482988" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink2Joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0.333000000000001"
+      rpy="0 0 0" />
+    <parent
+      link="Llink1" />
+    <child
+      link="Llink2" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-2.5"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Llink3">
+    <inertial>
+      <origin
+        xyz="0.0416719643245417 0.0241478137788811 0.0853335284793129"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279109697409" />
+      <inertia
+        ixx="0.00648832079887137"
+        ixy="-0.00179221849271022"
+        ixz="-0.00271679019298131"
+        iyy="0.00805304030208699"
+        iyz="-0.001653627436221"
+        izz="0.00678540047623505" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink3Joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0.192999999999998"
+      rpy="0 0 0" />
+    <parent
+      link="Llink2" />
+    <child
+      link="Llink3" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Llink4">
+    <inertial>
+      <origin
+        xyz="0.0376185376007667 -0.0236477821620418 0.0408313553264404"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279184672263" />
+      <inertia
+        ixx="0.00678534517458745"
+        ixy="-0.00165364565812748"
+        ixz="-0.00271678088423764"
+        iyy="0.00805304835814708"
+        iyz="-0.00179222922608784"
+        izz="0.00648839037275229" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink4Joint"
+    type="revolute">
+    <origin
+      xyz="0.0825029759386397 -0.000499999999995782 0.122951621230076"
+      rpy="0 0 0" />
+    <parent
+      link="Llink3" />
+    <child
+      link="Llink4" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Llink5">
+    <inertial>
+      <origin
+        xyz="0.144377260172375 0.0442888127502128 -1.06140328326454E-06"
+        rpy="0 0 0" />
+      <mass
+        value="1.83354771852399" />
+      <inertia
+        ixx="0.00424877740804917"
+        ixy="-0.00515154572783944"
+        ixz="1.50739074994663E-07"
+        iyy="0.0204127569491573"
+        iyz="-2.96122751552027E-08"
+        izz="0.0226383640304586" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink5.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink5.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink5Joint"
+    type="revolute">
+    <origin
+      xyz="0.123951621230082 0.000499999999998058 0.0825029759386526"
+      rpy="0 0 0" />
+    <parent
+      link="Llink4" />
+    <child
+      link="Llink5" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Llink6">
+    <inertial>
+      <origin
+        xyz="0.0530701815183106 -0.0233041979058553 0.00783478845337626"
+        rpy="0 0 0" />
+      <mass
+        value="1.25259359285124" />
+      <inertia
+        ixx="0.00185484814187435"
+        ixy="-0.000347756952793412"
+        ixz="-0.000202843780250681"
+        iyy="0.00387305662560326"
+        iyz="-5.05843507269165E-05"
+        izz="0.0032231622983116" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink6.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Llink6.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Llink6Joint"
+    type="revolute">
+    <origin
+      xyz="0.260000000000015 0.0164010000000189 0"
+      rpy="0 0 0" />
+    <parent
+      link="Llink5" />
+    <child
+      link="Llink6" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Link7">
+    <inertial>
+      <origin
+        xyz="0.00933712971524547 -0.0091988509618956 -0.026560659070341"
+        rpy="0 0 0" />
+      <mass
+        value="0.389527457929512" />
+      <inertia
+        ixx="0.000242951521571239"
+        ixy="-8.75526764784009E-06"
+        ixz="3.3516983764087E-06"
+        iyy="0.000243994424393335"
+        iyz="-2.05506263415771E-06"
+        izz="0.000344785097297413" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Link7.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.666666666666667 0.698039215686274 0.768627450980392 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Link7.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Lilnk7Joint"
+    type="revolute">
+    <origin
+      xyz="0.0880121744510445 -0.0164293917695358 -0.0504500000323069"
+      rpy="0 0 0" />
+    <parent
+      link="Llink6" />
+    <child
+      link="Link7" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Lhand">
+    <inertial>
+      <origin
+        xyz="8.9653582960536E-05 -0.000103408255135606 -0.0291570932173922"
+        rpy="0 0 0" />
+      <mass
+        value="0.387415724279654" />
+      <inertia
+        ixx="0.000745780160170052"
+        ixy="0.00056612914796683"
+        ixz="6.89669505962073E-07"
+        iyy="0.000746052124636826"
+        iyz="-5.10436307276305E-07"
+        izz="0.0012238613807458" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lhand.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lhand.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="LhandJoint"
+    type="fixed">
+    <origin
+      xyz="-1.21744766281573E-05 2.93917695260992E-05 -0.0541500552316524"
+      rpy="0 0 0" />
+    <parent
+      link="Link7" />
+    <child
+      link="Lhand" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Lfig1">
+    <inertial>
+      <origin
+        xyz="-0.000290652223702503 0.00029065160427233 -0.0227907003519061"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902962576" />
+      <inertia
+        ixx="3.40281171752397E-06"
+        ixy="5.45037857284161E-08"
+        ixz="-4.72401087257573E-07"
+        iyy="3.40281183542686E-06"
+        iyz="4.7240095037834E-07"
+        izz="8.26007595072238E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lfig1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lfig1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="LhandFig1"
+    type="prismatic">
+    <origin
+      xyz="0.0109601550867554 -0.0109601551016551 -0.0609000000026814"
+      rpy="0 0 0" />
+    <parent
+      link="Lhand" />
+    <child
+      link="Lfig1" />
+    <axis
+      xyz="-0.707106781186545 0.70710678118655 0" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Lfig2">
+    <inertial>
+      <origin
+        xyz="0.000290652304681949 -0.000290651604264169 -0.0227907003572694"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902962575" />
+      <inertia
+        ixx="3.40281171752392E-06"
+        ixy="5.45037857284356E-08"
+        ixz="4.72401087257649E-07"
+        iyy="3.40281183542683E-06"
+        iyz="-4.72400950378344E-07"
+        izz="8.26007595072263E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lfig2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Lfig2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="LhandFig2"
+    type="prismatic">
+    <origin
+      xyz="-0.0109606716152609 0.0109596386298945 -0.0608999999973184"
+      rpy="0 0 0" />
+    <parent
+      link="Lhand" />
+    <child
+      link="Lfig2" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Right_Base">
+    <inertial>
+      <origin
+        xyz="-0.025721506375091 -0.000140726843257527 0.0583238302293318"
+        rpy="0 0 0" />
+      <mass
+        value="2.53458533365764" />
+      <inertia
+        ixx="0.00669301726580403"
+        ixy="-1.22001853691012E-05"
+        ixz="-0.00112343981923952"
+        iyy="0.00948254575555608"
+        iyz="-3.09367300877376E-06"
+        izz="0.00886794997701855" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Right_Base.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Right_Base.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Right_BaseJoint"
+    type="fixed">
+    <origin
+      xyz="-0.199999999999999 0.2 0.0199999999999982"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Right_Base" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Rlink1">
+    <inertial>
+      <origin
+        xyz="-9.35195747481243E-07 -0.0341173386374659 0.124780621113124"
+        rpy="0 0 0" />
+      <mass
+        value="2.41043255219039" />
+      <inertia
+        ixx="0.0156481239806735"
+        ixy="2.63940333061383E-08"
+        ixz="-1.01730828563442E-07"
+        iyy="0.0136175207544788"
+        iyz="0.00407833802607255"
+        izz="0.00564870950611649" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink1"
+    type="revolute">
+    <origin
+      xyz="0 0 0.140999999999999"
+      rpy="0 0 0" />
+    <parent
+      link="Right_Base" />
+    <child
+      link="Rlink1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-2"
+      upper="1"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="RLink2">
+    <inertial>
+      <origin
+        xyz="-9.64107305531647E-07 0.0341173139390583 0.0672201485345921"
+        rpy="0 0 0" />
+      <mass
+        value="2.41043111441314" />
+      <inertia
+        ixx="0.0156482096239676"
+        ixy="-2.31206832413708E-08"
+        ixz="2.48512016478381E-09"
+        iyy="0.0136175968669449"
+        iyz="0.00407839832051848"
+        izz="0.00564871165929805" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink2Joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0.192"
+      rpy="0 0 0" />
+    <parent
+      link="Rlink1" />
+    <child
+      link="RLink2" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-2"
+      upper="2.5"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="RLink3">
+    <inertial>
+      <origin
+        xyz="0.0416719643440493 0.0241478138188891 0.0853335284687332"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279109498667" />
+      <inertia
+        ixx="0.00648832079547994"
+        ixy="-0.00179221849156005"
+        ixz="-0.00271679019366012"
+        iyy="0.00805304030174186"
+        iyz="-0.00165362743753089"
+        izz="0.00678540047210698" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink3Joint"
+    type="revolute">
+    <origin
+      xyz="0 0 0.193"
+      rpy="0 0 0" />
+    <parent
+      link="RLink2" />
+    <child
+      link="RLink3" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="RLink4">
+    <inertial>
+      <origin
+        xyz="0.037618537621585 -0.023647782171419 0.040831355329868"
+        rpy="0 0 0" />
+      <mass
+        value="1.86279184626264" />
+      <inertia
+        ixx="0.00678534517436999"
+        ixy="-0.00165364565913447"
+        ixz="-0.00271678088432163"
+        iyy="0.00805304835667362"
+        iyz="-0.00179222922603446"
+        izz="0.00648839037073732" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink4Joint"
+    type="revolute">
+    <origin
+      xyz="0.0825029759386397 -0.000499999999998002 0.122951621230075"
+      rpy="0 0 0" />
+    <parent
+      link="RLink3" />
+    <child
+      link="RLink4" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Rlink5">
+    <inertial>
+      <origin
+        xyz="0.144377259711346 0.0442888124225082 -1.06115122966433E-06"
+        rpy="0 0 0" />
+      <mass
+        value="1.83354773355147" />
+      <inertia
+        ixx="0.00424877744807825"
+        ixy="-0.00515154575566703"
+        ixz="1.50763215680123E-07"
+        iyy="0.0204127570105424"
+        iyz="-2.95972695154808E-08"
+        izz="0.0226383640988616" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink5.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink5.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink5Joint"
+    type="revolute">
+    <origin
+      xyz="0.123951621230082 0.000500000000000417 0.0825029759386525"
+      rpy="0 0 0" />
+    <parent
+      link="RLink4" />
+    <child
+      link="Rlink5" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Rlink6">
+    <inertial>
+      <origin
+        xyz="0.0530701813998527 -0.0233041979072692 0.00783478834590823"
+        rpy="0 0 0" />
+      <mass
+        value="1.25259358988582" />
+      <inertia
+        ixx="0.00185484813593844"
+        ixy="-0.000347756953279701"
+        ixz="-0.000202843773203066"
+        iyy="0.00387305661162103"
+        iyz="-5.05843512010634E-05"
+        izz="0.00322316229022356" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink6.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.250980392156863 0.250980392156863 0.250980392156863 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rlink6.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink6Joint"
+    type="revolute">
+    <origin
+      xyz="0.260000000000013 0.0164010000000093 0"
+      rpy="0 0 0" />
+    <parent
+      link="Rlink5" />
+    <child
+      link="Rlink6" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="RLink7">
+    <inertial>
+      <origin
+        xyz="0.00933712972417311 -0.00919885170104512 -0.0265606591820335"
+        rpy="0 0 0" />
+      <mass
+        value="0.389527463644162" />
+      <inertia
+        ixx="0.000242951522384317"
+        ixy="-8.75526909394078E-06"
+        ixz="3.35169843490992E-06"
+        iyy="0.000243994429399817"
+        iyz="-2.05506337841911E-06"
+        izz="0.00034478510117855" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink7.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.666666666666667 0.698039215686274 0.768627450980392 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/RLink7.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RLink7Joint"
+    type="revolute">
+    <origin
+      xyz="0.0880121744510449 -0.0164293917695358 -0.050450000032307"
+      rpy="0 0 0" />
+    <parent
+      link="Rlink6" />
+    <child
+      link="RLink7" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2"
+      upper="2"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Rhand">
+    <inertial>
+      <origin
+        xyz="8.96500605939154E-05 -0.00010340735265485 -0.029157091155531"
+        rpy="0 0 0" />
+      <mass
+        value="0.387415750528434" />
+      <inertia
+        ixx="0.000745780526544873"
+        ixy="0.000566128816951011"
+        ixz="6.89670586232158E-07"
+        iyy="0.000746052557490328"
+        iyz="-5.10443910107961E-07"
+        izz="0.00122386216140265" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rhand.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rhand.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RhandJoint"
+    type="fixed">
+    <origin
+      xyz="-1.2128248594423E-05 -0.0549705620195039 -0.0541500552176235"
+      rpy="0 0 0" />
+    <parent
+      link="RLink7" />
+    <child
+      link="Rhand" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Rfig1">
+    <inertial>
+      <origin
+        xyz="-0.000290652266050517 0.00029065160426818 -0.0227907003760985"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902962575" />
+      <inertia
+        ixx="3.4028117174469E-06"
+        ixy="5.450378576694E-08"
+        ixz="-4.72401087467719E-07"
+        iyy="3.40281183542684E-06"
+        iyz="4.72400950373882E-07"
+        izz="8.26007595149282E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rfig1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rfig1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="RFig1Joint"
+    type="prismatic">
+    <origin
+      xyz="0.0109601550966892 -0.0109601551016551 -0.0609000000008937"
+      rpy="0 0 0" />
+    <parent
+      link="Rhand" />
+    <child
+      link="Rfig1" />
+    <axis
+      xyz="0.707106781186545 -0.70710678118655 0" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Rfig2">
+    <inertial>
+      <origin
+        xyz="0.00029065226233399 -0.000290651604268305 -0.022790700376146"
+        rpy="0 0 0" />
+      <mass
+        value="0.0111449902962575" />
+      <inertia
+        ixx="3.40281171760097E-06"
+        ixy="5.45037856899093E-08"
+        ixz="4.72401087047511E-07"
+        iyy="3.40281183542683E-06"
+        iyz="-4.72400950382788E-07"
+        izz="8.2600759499522E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rfig2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Rfig2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="Rfig2Joint"
+    type="prismatic">
+    <origin
+      xyz="-0.010960671605327 0.0109596386298945 -0.0608999999991063"
+      rpy="0 0 0" />
+    <parent
+      link="Rhand" />
+    <child
+      link="Rfig2" />
+    <axis
+      xyz="0.707106781186545 -0.70710678118655 0" />
+    <limit
+      lower="0"
+      upper="0.05"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="Plate">
+    <inertial>
+      <origin
+        xyz="0.00881971770273393 7.15268611223008E-05 0.0106850996822792"
+        rpy="0 0 0" />
+      <mass
+        value="11.3852045209695" />
+      <inertia
+        ixx="0.916046983474667"
+        ixy="1.87919726736E-05"
+        ixz="2.03942280187972E-17"
+        iyy="0.332754908371387"
+        iyz="8.85830179960589E-19"
+        izz="1.24786087821132" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Plate.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Plate.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="PlateJoint"
+    type="fixed">
+    <origin
+      xyz="0.171895596417613 -0.101566053735807 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="Plate" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="Trunking">
+    <inertial>
+      <origin
+        xyz="-0.268527581734511 -0.451486458587471 0.0188180687750304"
+        rpy="0 0 0" />
+      <mass
+        value="1.02283509512306" />
+      <inertia
+        ixx="0.0268769451814877"
+        ixy="-8.8300845706957E-06"
+        ixz="-4.78329260678675E-06"
+        iyy="0.00717996911344141"
+        iyz="-5.85559928110165E-05"
+        izz="0.0332373298671258" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Trunking.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://FR3-dual-arm_description_0820/meshes/Trunking.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="TrunkingJoint"
+    type="fixed">
+    <origin
+      xyz="0.262104403582387 0.474566053735807 0.02"
+      rpy="0 0 0" />
+    <parent
+      link="Plate" />
+    <child
+      link="Trunking" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+</robot>
